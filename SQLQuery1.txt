@@ -1,0 +1,146 @@
+USE master;
+GO
+
+-- 1. حذف قاعدة البيانات لو كانت موجودة لتجنب خطأ التكرار
+IF EXISTS (SELECT * FROM sys.databases WHERE name = 'university_db')
+BEGIN
+    ALTER DATABASE university_db SET SINGLE_USER WITH ROLLBACK IMMEDIATE;
+    DROP DATABASE university_db;
+END
+GO
+
+CREATE DATABASE university_db;
+GO
+
+USE university_db;
+GO
+
+-- =========================
+-- DEPARTMENTS TABLE
+-- =========================
+CREATE TABLE departments (
+    Department_ID INT IDENTITY(1,1) PRIMARY KEY,
+    Department_Name VARCHAR(100) NOT NULL
+);
+
+INSERT INTO departments (Department_Name) VALUES
+('Computer Science'),
+('Information Systems'),
+('Information Technology');
+
+-- =========================
+-- STUDENTS TABLE
+-- =========================
+CREATE TABLE students (
+    Student_ID INT IDENTITY(1,1) PRIMARY KEY,
+    First_Name VARCHAR(50) NOT NULL,
+    Last_Name VARCHAR(50) NOT NULL,
+    Email VARCHAR(100) UNIQUE,
+    Enrollment_Date DATE,
+    Department_ID INT,
+
+    FOREIGN KEY (Department_ID) REFERENCES departments(Department_ID)
+    ON DELETE SET NULL
+);
+
+INSERT INTO students (First_Name, Last_Name, Email, Enrollment_Date, Department_ID) VALUES
+('Shereen','Ayman','shereen@uni.edu','2026-02-15',1),
+('Menna','Wasem','menna@uni.edu','2026-02-15',1),
+('Omar','Khaled','omar@uni.edu','2026-02-16',2);
+
+-- =========================
+-- PROFESSORS TABLE
+-- =========================
+CREATE TABLE professors (
+    Professor_ID INT IDENTITY(1,1) PRIMARY KEY,
+    First_Name VARCHAR(50),
+    Last_Name VARCHAR(50),
+    Email VARCHAR(100) UNIQUE,
+    Department_ID INT,
+
+    FOREIGN KEY (Department_ID) REFERENCES departments(Department_ID)
+    ON DELETE SET NULL
+);
+
+INSERT INTO professors (First_Name, Last_Name, Email, Department_ID) VALUES
+('Ahmed','Ali','ahmed@uni.edu',1),
+('Sara','Youssef','sara@uni.edu',2);
+
+-- =========================
+-- COURSES TABLE
+-- =========================
+CREATE TABLE courses (
+    Course_ID INT IDENTITY(1,1) PRIMARY KEY,
+    Course_Name VARCHAR(100),
+    Credits INT,
+    Professor_ID INT,
+
+    FOREIGN KEY (Professor_ID) REFERENCES professors(Professor_ID)
+    ON DELETE SET NULL
+);
+
+INSERT INTO courses (Course_Name, Credits, Professor_ID) VALUES
+('Database Systems',3,1),
+('Web Development',3,2);
+
+-- =========================
+-- ENROLLMENTS TABLE
+-- =========================
+CREATE TABLE enrollments (
+    Enrollment_ID INT IDENTITY(1,1) PRIMARY KEY,
+    Student_ID INT,
+    Course_ID INT,
+    Midterm_Score DECIMAL(5,2),
+    Practical_Score DECIMAL(5,2),
+    Final_Score DECIMAL(5,2),
+
+    -- عمود محسوب تلقائياً للمجموع
+    Total_Score AS (Midterm_Score + Practical_Score + Final_Score),
+
+    -- تعديل ذكي: حساب التقدير (Grade) تلقائياً بناءً على المجموع دون الحاجة لإدخاله يدوياً
+    Grade_Letter AS (
+        CASE 
+            WHEN (Midterm_Score + Practical_Score + Final_Score) >= 90 THEN 'A'
+            WHEN (Midterm_Score + Practical_Score + Final_Score) >= 80 THEN 'B'
+            WHEN (Midterm_Score + Practical_Score + Final_Score) >= 70 THEN 'C'
+            WHEN (Midterm_Score + Practical_Score + Final_Score) >= 60 THEN 'D'
+            ELSE 'F'
+        END
+    ),
+    Semester VARCHAR(20),
+
+    FOREIGN KEY (Student_ID) REFERENCES students(Student_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Course_ID) REFERENCES courses(Course_ID) ON DELETE CASCADE
+);
+
+-- لاحظي أننا حذفنا الـ Grade_Letter من الإدخال لأنها تُحسب تلقائياً الآن
+INSERT INTO enrollments 
+(Student_ID, Course_ID, Midterm_Score, Practical_Score, Final_Score, Semester) 
+VALUES
+(1, 1, 19.5, 20.0, 55.0, 'Spring 2026'),
+(2, 2, 18.0, 17.0, 50.0, 'Spring 2026');
+
+-- =========================
+-- ATTENDANCE TABLE
+-- =========================
+CREATE TABLE attendance (
+    Attendance_ID INT IDENTITY(1,1) PRIMARY KEY,
+    Student_ID INT,
+    Course_ID INT,
+    Attendance_Date DATE,
+    Status VARCHAR(10) CHECK (Status IN ('Present','Absent','Late')),
+
+    FOREIGN KEY (Student_ID) REFERENCES students(Student_ID) ON DELETE CASCADE,
+    FOREIGN KEY (Course_ID) REFERENCES courses(Course_ID) ON DELETE CASCADE
+);
+
+INSERT INTO attendance (Student_ID, Course_ID, Attendance_Date, Status) VALUES
+(1, 1, '2026-05-10', 'Present'),
+(2, 2, '2026-05-11', 'Absent');
+GO
+SELECT * FROM departments;
+SELECT * FROM students;
+SELECT * FROM professors;
+SELECT * FROM courses; SELECT * FROM enrollments;
+SELECT * FROM attendance;
+GO
